@@ -6,6 +6,7 @@ use my\bq\dao\PdoManager;
 use my\bq\criterion\CriteriaImpl;
 use my\bq\criterion\Criteria;
 use my\bq\criterion\Restrictions;
+use my\bq\criterion\Projections;
 use dao\OrderDao;
 
 class DaoTemplate{
@@ -151,6 +152,27 @@ class DaoTemplate{
 	 */	
 	
 	public function findAll($criteria){
+		
+		//是否使用分页器
+		$dataPager = $criteria->getDataPager();
+		
+		if(is_object($dataPager)){
+			$totalNum = 0;
+			$fileds = $criteria->getFileds();
+			$criteria->cleanFileds();
+			$criteria->addProjection(Projections::rowCount());
+			$rs1 = $criteria->_array(false);
+			$totalNum = @current(@current($rs1));
+			$dataPager->setTotalNum($totalNum);
+			
+			$criteria->cleanProjection();
+			$criteria->setFileds($fileds);
+			$criteria->setFirstResult($dataPager->getFirstResult());
+			$criteria->setFetchSize($dataPager->getPageSize());
+			
+		}
+		
+		
 		return $criteria->_array();
 	}
 	

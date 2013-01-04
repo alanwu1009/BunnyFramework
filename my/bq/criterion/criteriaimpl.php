@@ -31,6 +31,8 @@ class CriteriaImpl implements Criteria{
 	private $fullJoinQuery = "";
 	private $fullProjectionQuery = "";
 	private $parameters = array();
+	
+	private $dataPager; //DataPager
 
 	private $sqlString;
 
@@ -112,6 +114,14 @@ class CriteriaImpl implements Criteria{
 
 	public function getGroupEntries(){
 		return $this->groupEntries;
+	}
+	
+	public function getDataPager(){
+		return $this->dataPager;
+	}
+	
+	public function setDataPager($dataPager){
+		$this->dataPager = $dataPager;
 	}
 
 
@@ -453,20 +463,34 @@ class CriteriaImpl implements Criteria{
 			return $data;
 		}
 		
-		$totalNum = 0;
-		
+		$totalNum = 0;		
+		$fileds = $crit->getFileds();
 		$projectionEntitys = $crit->getProjectionEntitys();
-		$crit->cleanProjection();
-		
-		$rs = $crit->_array(false);
+		$dataPager = $crit->getDataPager(); //获取分页器
 		
 		if(isset($projectionEntitys) && count($projectionEntitys) > 0){
 			$crit->cleanFileds();
 			$crit->cleanLimit();
-			$crit->setProjectionEntitys($projectionEntitys);
 			$rs1 = $crit->_array(false);
-			$totalNum = @current(@current($rs));
+			$totalNum = @current(@current($rs1));
+			
+			
+			if(is_object($dataPager)){
+				$dataPager->setTotalNum($totalNum);
+			}
+
+			$crit->cleanProjection();
 		}
+		$crit->setFileds($fileds);
+		if(is_object($dataPager)){
+			$crit->setFirstResult($dataPager->getFirstResult());
+			$crit->setFetchSize($dataPager->getPageSize());
+		}
+		
+
+		
+		$rs = $crit->_array(false);
+
 		
 		if($rs){
 			
@@ -517,11 +541,9 @@ class CriteriaImpl implements Criteria{
 					}
 					array_push($dataList, $data);						
 				}
-				if(isset($projectionEntitys) && count($projectionEntitys) > 0){
-					$rset = array('list'=>$dataList,'total'=>$totalNum);
-					return $rset; 
-				}
+
 				return $dataList;
+				
 				}
 			}
 		//}

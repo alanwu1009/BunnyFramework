@@ -138,6 +138,49 @@ abstract class EntityTemplate{
 		}
 	}
 	
+	/**
+	 * 设定分页器;
+	 * @param unknown $dataPager
+	 * @param unknown $relationEntiyName
+	 */
+	public function setDataPager($dataPager,$relationEntiyName){
+		
+		if($relationEntiyName){
+			$cfg = $this->getConfig();
+			foreach ($cfg['relations'] as $k => $relation){
+				if($relation['name'] == $relationEntiyName){
+					$crit = null;
+					if(isset($cfg['relations'][$k]['criteria'])){
+						$crit = $cfg['relations'][$k]['criteria'];
+					}else{
+						$crit = new CriteriaImpl(new $relation['class']);
+					}
+					$crit->setDataPager($dataPager);	//设定分页器
+					$crit->addProjection(Projections::rowCount('total'));
+						
+					$cfg['relations'][$k]['criteria'] = $crit;
+					break;
+				}
+			}
+			$this->setConfig($cfg);
+		}
+		
+	}
+	
+	
+	
+	//将数据解析并填充实体;
+	public function load($data){
+		$config = $this->getConfig();
+		$columns = $config['columns'];
+		
+		foreach($columns as $column){
+			if(isset($data[$column])){
+				$this->$column = $data[$column];
+			}
+		}
+
+	}
 	
 	
 }
