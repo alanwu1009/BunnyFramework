@@ -13,7 +13,7 @@ class Group implements Criterion{
 	}
 
 	public function toSqlString($criteria){
-		return $criteria->getAlias().'.'.$this->propertyName;
+		return $criteria->getAlias().'__'.$this->propertyName;
 	}
 
 	public static function add($propertyName) {

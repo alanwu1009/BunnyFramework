@@ -2,6 +2,7 @@
 namespace my\bq\criterion;
 use my\bq\common\Log;
 use my\bq\common\Configuration;
+
 class CacheManager{
 
 	private static $cacheStack = array();
@@ -12,6 +13,7 @@ class CacheManager{
 			self::$cache = new CacheManager();
 			return self::$cache;
 		}
+
 		return self::$cache;
 	}
 
@@ -19,17 +21,11 @@ class CacheManager{
 	public function set($key,$value){
 		if(!$key)return;
 		self::$cacheStack[md5($key)] = $value;
-		if(Configuration::$SHOW_CACHE){
-			Log::writeMsg(Log::NOTICE,"cache:set[".$key."]");
-		}
 	}
 
 	public function get($key){
 		if(!$key)return;
 		if(isset(self::$cacheStack[md5($key)])){
-			if(Configuration::$SHOW_CACHE){
-				Log::writeMsg(Log::NOTICE,"cache:get[".$key."]");
-			}
 			return self::$cacheStack[md5($key)];
 		}
 

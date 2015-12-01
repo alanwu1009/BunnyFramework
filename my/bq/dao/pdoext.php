@@ -3,8 +3,9 @@ namespace my\bq\dao;
 
 use \PDO;
 use \PDOStatement;
-
-use \my\bq\common\Configuration; 
+use \my\bq\criterion\CriteriaQuery;
+use \my\bq\common\Configuration;
+use \my\bq\common\Log;
 
 /**
  * 扩展了的pdo
@@ -22,11 +23,6 @@ class PDOext extends PDO {
 		parent::__construct($dsn, $userName, $passowrd);
 		$this->query("set names '$charSet'");
 		$this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-		if (Configuration::$DEBUG){
-			$this->_debug = true;
-		}
-			
 	}
 	
 	/**
@@ -82,6 +78,7 @@ class PDOext extends PDO {
 	 * @return mixed
 	 */
 	public function getRow($sql, array $binds=array()) {
+		if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE, CriteriaQuery::getDumpSQL($sql, $binds));
 		$sth = $this->prepare($sql);
 		self::bindValue($sth, $binds);
 		$this->execute($sth);
@@ -99,6 +96,7 @@ class PDOext extends PDO {
 	 * @return multitype:
 	 */
 	public function getRows($sql, array $binds=array()) {
+        if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE, CriteriaQuery::getDumpSQL($sql, $binds));
 		$sth = $this->prepare($sql);
 		self::bindValue($sth, $binds);
 		$this->execute($sth);
@@ -118,8 +116,12 @@ class PDOext extends PDO {
 		}
 		$sqlK = implode(', ', $ks);
 		$sqlV = ':'.implode(', :', array_keys($data));
-		
+        $sqlV = str_replace("`","",$sqlV);
 		$sql = "insert into $table ($sqlK) values ($sqlV)";
+		
+		if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE, $sql);
+		
+		
 		$sth = $this->prepare($sql);
 		self::bindValue($sth, $data);
 		$out = $this->execute($sth)?$this->lastInsertId():false;
@@ -143,6 +145,7 @@ class PDOext extends PDO {
 		}
 		$sqlU = trim(trim($sqlU, ' '), ',');
 		$sql = "update $table $sqlU where $where";
+		if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE, $sql);
 		$sth = $this->prepare($sql);
 		self::bindValue($sth, $data);
 		$out = $this->execute($sth);
@@ -159,8 +162,9 @@ class PDOext extends PDO {
 		}
 		$sqlK = implode(', ', $ks);
 		$sqlV = ':'.implode(', :', array_keys($data));
-		
+        $sqlV = str_replace("`","",$sqlV);
 		$sql = "replace into $table ($sqlK) values ($sqlV)";
+		if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE, $sql);
 		$sth = $this->prepare($sql);
 		self::bindValue($sth, $data);
 		$out = $this->execute($sth)?$this->lastInsertId():false;
@@ -171,6 +175,7 @@ class PDOext extends PDO {
 	
 	public function delete($table, $where) {
 		$sql = "delete from $table where $where";
+		if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE, $sql);
 		$sth = $this->prepare($sql);
 		$out = $this->execute($sth);
 		$sth->closeCursor();
@@ -178,6 +183,7 @@ class PDOext extends PDO {
 	}
 	
 	public static function bindValue(PDOStatement &$sth, array $binds) {
+		
 		foreach ($binds as $k=>$v) {
 			if (is_int($k)) {
 				$sth->bindValue($k+1, $v);
@@ -185,6 +191,7 @@ class PDOext extends PDO {
 			}
 			if ($k[0] != ':')
 				$k = ':'.$k;
+            $k = str_replace("`","",$k);
 			$sth->bindValue($k, $v);
 		}
 	}
@@ -196,7 +203,10 @@ class PDOext extends PDO {
 			$this->debug($sth);
 			$out = $sth->execute();
 		}catch(\PDOException $e){
-			echo $e->getMessage();
+            if(Configuration::$SHOW_CORE_EXCEPTION){
+                Log::writeMsg(Log::ERROR,$e->getMessage());
+            }
+			throw $e;
 		}
 		return $out;
 	}
@@ -219,7 +229,8 @@ class PDOext extends PDO {
 	}
 	
 	public function debug($sth) {
-		if ($this->_debug) {
+          return ;
+		if (Configuration::$DEBUG) {
 			//Auth::check('debug_db');
 			$queryTime = (microtime() - $this->_queryTime);
 			echo '<li>';

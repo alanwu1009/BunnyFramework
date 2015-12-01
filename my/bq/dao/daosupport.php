@@ -5,26 +5,36 @@ use my\bq\common\Log;
 use my\bq\criterion\CacheManager;
 use my\bq\common\Configuration;
 use \Exception;
+use \PDO;
 class DaoSupport{
 	
 	//persistant object
 	public static function saveEntity($entity){
 		if($entity){
-			
+
+            if(!$entity->validate('save')){
+                return false;
+            }
+
 			$entityCfg = $entity->getConfig();
 			$vars = array();
 			foreach ($entityCfg['columns'] as $key){
 				$vars[$key] =  $entity->$key;
 			}
-			
-			if(isset($vars[$entityCfg['id']]))
-				unset($vars[$entityCfg['id']]);
-			
+
+			if(!empty($vars[$entityCfg['id']]) && $entity->checkIsNewRecord()){
+                return DaoSupport::updateEntity($entity);
+            }
+
 			$pdoManager = PdoManager::getInstance();
 			$pdo = $pdoManager->getPdo($entity,true);
-				
-			$id = $pdo->insert($entityCfg['name'], $vars);
-			
+
+            try{
+                $id = $pdo->insert($entityCfg['name'], $vars);
+            }catch(Exception $e){
+                    throw new DAOException(DAOException::DB_EXEC_EXCEPTION,DAOException::DB_EXEC_EXCEPTION_MESSAGE);
+            }
+
 			$cache = CacheManager::getInstance();
 			$entiList = $cache->get("inserted_or_deleted_or_updated_list");
 			if(!is_array($entiList)) $entiList = array();
@@ -32,10 +42,9 @@ class DaoSupport{
 
 			$cache->set("inserted_or_deleted_or_updated_list",$entiList);				
 			
-			if(Configuration::$SHOW_SQL)
-				Log::writeMsg(Log::NOTICE, "{$entityCfg['name']}插入一条数据, ");
-			
-			if($id === false) throw new Exception("保存[{$entityCfg['name']}]失败");
+			if($id === false){
+                throw new DAOException(DAOException::DB_EXEC_EXCEPTION,DAOException::DB_EXEC_EXCEPTION_MESSAGE);
+            }
 			
 			$relationCfg  = $entity->getRelationPro();
 			
@@ -54,9 +63,9 @@ class DaoSupport{
 						//实体数组
 						if(is_array($relationObject)){
 							foreach($relationObject as $objectItem){
-								if(is_object($relationObject)){
-									$relationObject->$conf['column'] = $id;
-									self::saveEntity($relationObject);
+								if(is_object($objectItem)){
+                                    $objectItem->$conf['column'] = $id;
+									self::saveEntity($objectItem);
 								}
 							}
 						}
@@ -75,7 +84,11 @@ class DaoSupport{
 	//persistant object
 	public static function replaceEntity($entity){
 		if($entity){
-				
+
+            if(!$entity->validate('replace')){
+                return false;
+            }
+
 			$entityCfg = $entity->getConfig();
 			$vars = array();
 			foreach ($entityCfg['columns'] as $key){
@@ -84,8 +97,14 @@ class DaoSupport{
 				
 			$pdoManager = PdoManager::getInstance();
 			$pdo = $pdoManager->getPdo($entity,true);
-				
-			$id = $pdo->replace($entityCfg['name'], $vars);
+
+            try{
+                $id = $pdo->replace($entityCfg['name'], $vars);
+            }catch(Exception $e){
+                throw new DAOException(DAOException::DB_EXEC_EXCEPTION,DAOException::DB_EXEC_EXCEPTION_MESSAGE);
+            }
+
+
 				
 			$cache = CacheManager::getInstance();
 			$entiList = $cache->get("inserted_or_deleted_or_updated_list");
@@ -94,10 +113,9 @@ class DaoSupport{
 	
 			$cache->set("inserted_or_deleted_or_updated_list",$entiList);
 				
-			if(Configuration::$SHOW_SQL)
-				Log::writeMsg(Log::NOTICE, "{$entityCfg['name']}插入一条数据, ");
-				
-			if($id === false) throw new Exception("保存[{$entityCfg['name']}]失败");
+			if($id === false){
+                throw new DAOException(DAOException::DB_EXEC_EXCEPTION,DAOException::DB_EXEC_EXCEPTION_MESSAGE);
+            }
 				
 			$relationCfg  = $entity->getRelationPro();
 				
@@ -116,9 +134,9 @@ class DaoSupport{
 						//实体数组
 						if(is_array($relationObject)){
 							foreach($relationObject as $objectItem){
-								if(is_object($relationObject)){
-									$relationObject->$conf['column'] = $id;
-									self::saveEntity($relationObject);
+								if(is_object($objectItem)){
+                                    $objectItem->$conf['column'] = $id;
+									self::saveEntity($objectItem);
 								}
 							}
 						}
@@ -131,26 +149,17 @@ class DaoSupport{
 		return false;
 	}
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
 	
 	//update
 	public static function updateEntity($entity,$where = null){
 		if($entity){
 			if(!is_object($entity)) throw Exception("runtime exception");
+
+            if(!$entity->validate('update')){
+                return false;
+            }
+
 			$entityCfg = $entity->getConfig();
 			$vars = array();
 			$sql = "update {$entityCfg['name']} set ";
@@ -158,8 +167,7 @@ class DaoSupport{
 			foreach ($entityCfg['columns'] as $key){
 				$p = trim($key,"`"); 
 				$value = $entity->$p;
-				
-				if($value){
+				if(isset($value)){
 					if(is_string($value)){
 						$value = addslashes($value);
 					}
@@ -172,22 +180,43 @@ class DaoSupport{
 			$parseWhereStr = "";
 			if($where != null){
 				foreach ($where as $k => $v){
-					if($parseWhereStr!="")$parseWhereStr.=" and ";
-					$parseWhereStr.=("`".$k."` = ".$v);
+					if($parseWhereStr!=""){
+                        $parseWhereStr.=" and ";
+                    }
+                    if(!is_numeric($v)){
+                        $v = "'".$v."'";
+                    }
+                    if(is_object($v) && method_exists($v,'toSqlString')){
+                        $parseWhereStr .= " ".$v->toSqlString($entity->getCriteria(),false);
+                     }else{
+                        $parseWhereStr.=("`".$k."` = ".$v);
+                    }
 				}
 			}else{
 				$id = explode(",",$entityCfg['id']);
 				foreach ($id as $k){
 					if($parseWhereStr!="")$parseWhereStr.=" and ";
-					$parseWhereStr.=("`".$k."` =".$entity->$k);
+					$parseWhereStr.=("`".$k."` ='".$entity->$k."'");
 				}
 			}
 			
 			$sql.= $set." where ".$parseWhereStr;
-			
-			$pdoManager = PdoManager::getInstance();
-			$pdo = $pdoManager->getPdo($entity,true);  
-			$bool = $pdo->exec($sql);
+
+            try{
+                $pdoManager = PdoManager::getInstance();
+                $pdo = $pdoManager->getPdo($entity,true);
+                if(Configuration::$SHOW_SQL){
+                    Log::writeMsg(Log::NOTICE,$sql);
+                }
+                $bool = $pdo->exec($sql);
+
+            }catch(Exception  $e){
+                if(Configuration::$SHOW_CORE_EXCEPTION){
+                    Log::writeMsg(Log::ERROR,$e->getMessage());
+                }
+                throw new DAOException(DAOException::DB_EXEC_EXCEPTION,DAOException::DB_EXEC_EXCEPTION_MESSAGE);
+            }
+
 			
 			$cache = CacheManager::getInstance();
 			$entiList = $cache->get("inserted_or_deleted_or_updated_list");
@@ -195,7 +224,7 @@ class DaoSupport{
 			array_push($entiList, @get_class($entity));
 			$cache->set("inserted_or_deleted_or_updated_list",$entiList);
 			
-			if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE,$sql);
+			//if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE,$sql);
 				
 			$relationCfg  = $entity->getRelationPro();
 			foreach ($relationCfg as $var => $conf){
@@ -218,7 +247,7 @@ class DaoSupport{
 					}
 				}
 			}
-				
+
 			return 	$bool;
 		}
 		return false;
@@ -227,8 +256,8 @@ class DaoSupport{
 	
 	//delete
 	public static function deleteEntity($entity,$where=null){
+        ;
 		if($entity){
-			
 			$entityCfg = $entity->getConfig();
 			$vars = array();
 			foreach ($entityCfg['columns'] as $key){
@@ -237,36 +266,51 @@ class DaoSupport{
 			}
 			
 			
-			
+
 			
 			//如果指定where 则使用where条件,未指定则使用id; 更新不可以不指定条件;
 			$parseWhereStr = "";
 			if($where != null){
 				foreach ($where as $k => $v){
 					if($parseWhereStr!="")$parseWhereStr.=" and ";
-					$parseWhereStr.=("`".$k."` =".$v);
+
+                    if(is_string($v)){
+                        $v = "'".$v."'";
+                    }
+
+                    if(is_object($v)){
+                        $parseWhereStr.= $v->toSqlString();
+                    }else{
+                        $parseWhereStr.=("`".$k."` ='$v'");
+                    }
 				}
 			}else{
 				$id = explode(",",$entityCfg['id']);
 				foreach ($id as $k){
 					if($parseWhereStr!="")$parseWhereStr.=" and ";
-					$parseWhereStr.=("`".$k."` =".$entity->$k);
+					$parseWhereStr.=("`".$k."` ="."'".$entity->$k."'");
 				}
 			}
 				
 			$sql = 	"delete from {$entityCfg['name']} where ".$parseWhereStr;
-			
-			$pdoManager = PdoManager::getInstance();
-			$pdo = $pdoManager->getPdo($entity,true);
-			$bool = $pdo->exec($sql);
-			
+
+            if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE, $sql);
+            try{
+                $pdoManager = PdoManager::getInstance();
+                $pdo = $pdoManager->getPdo($entity,true);
+                $bool = $pdo->exec($sql);
+            }catch(Exception  $e){
+                throw new DAOException(DAOException::DB_EXEC_EXCEPTION,DAOException::DB_EXEC_EXCEPTION_MESSAGE);
+            }
+
+
 			$cache = CacheManager::getInstance();
 			$entiList = $cache->get("inserted_or_deleted_or_updated_list");
 			if(!is_array($entiList)) $entiList = array();
 			array_push($entiList, @get_class($entity));
 			$cache->set("inserted_or_deleted_or_updated_list",$entiList);
 			
-			if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE, $sql);
+
 	
 			$relationCfg  = $entity->getRelationPro();
 			foreach ($relationCfg as $var => $conf){
@@ -287,15 +331,24 @@ class DaoSupport{
 									$object->$objConf['id'] = $entity->$conf['key'];
 									self::deleteEntity($object);
 								}catch(Exception $e){
-									return $e;
+									throw $e;
 								}
 							}
-						}
+						}else{
+                            $columnVal = $entity->$conf['key'];
+                            if(!$columnVal){
+                                $columnVal = $where[$conf['key']];
+                            }
+                            if($columnVal){
+                                $classIns = new  $conf['class']();
+                                self::deleteEntity($classIns,array($conf['column']=>$columnVal));
+                            }
+                        }
 					}
 				}
 			}
 	
-			return 	$bool;
+			return $bool;
 		}
 		return false;
 	}

@@ -11,6 +11,6 @@ class SQLCriterion implements Criterion{
 	public function toSqlString($criteria){
 		return $this->sql;
 	}
-	 
+
 
 }

@@ -1,7 +1,7 @@
 <?php
 namespace my\bq\criterion;
 
-class InExpression implements Criterion{
+class InExpression implements Criterion,MongoCriterion{
 	private $propertyName;
 	private $values;
 	public function __construct($propertyName, $values) {
@@ -9,9 +9,22 @@ class InExpression implements Criterion{
 		$this->values = $values;
 	}
 
-    public function toSqlString($criteria){
-		    	
-		return $criteria->getAlias().'.'.$this->propertyName . " in(" . self::buildInParam($this->values, CriteriaQuery::$parameters). ")";		
+    public function toSqlString($criteria,$placeholder=true){
+		if($placeholder){
+            return $criteria->getAlias().'.'.$this->propertyName . " in(" . self::buildInParam($this->values, CriteriaQuery::$parameters). ")";
+        }
+        $in = '';
+        foreach($this->values as $v){
+            if($in != ''){
+                $in.= ',';
+            }
+            if(is_numeric($v)){
+                $in.="'$v'";
+            }else{
+                $in.="$v";
+            }
+        }
+        return $this->propertyName . " in(" .$in. ")";
     }
 	
 	public static function buildInParam($value,&$params){
@@ -22,7 +35,13 @@ class InExpression implements Criterion{
 			array_push($params, $item);
 		}
 		return $qStr;
-	}	
+	}
+
+
+    public function toMongoParam($criteria){
+        return array($this->propertyName=>array('$in'=>$this->values));
+    }
+
 	
 	
 }

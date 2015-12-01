@@ -3,7 +3,7 @@ namespace my\bq\criterion;
 use my\bq\common\Configuration;
 use my\bq\common\Log;
 use my\bq\dao\PdoManager;
-class CriteriaImpl implements Criteria{
+class CriteriaMongoImpl implements Criteria{
 
 	private $pdo;
 
@@ -13,7 +13,7 @@ class CriteriaImpl implements Criteria{
 	private $orderEntries = array();
 	private $groupEntries = array();
 	private $relationEntries = array();
-    private $translaters = array();
+
 	private $criterias = array();
 	private $table = "";
 	private $tableEntity = "";
@@ -30,7 +30,7 @@ class CriteriaImpl implements Criteria{
 	private $fullOrderQuery = "";
 	private $fullJoinQuery = "";
 	private $fullProjectionQuery = "";
-    private $parameters = array();
+	private $parameters = array();
 	
 	private $dataPager; //DataPager
 
@@ -42,16 +42,8 @@ class CriteriaImpl implements Criteria{
 		$this->columns = $entityConf['columns'];
 		$this->tableEntity = $entityClass;
 		$this->fileds =  $entityClass->getFileds();
-
-        //add Restrictions;
-        foreach($this->columns as $column){
-            if($entityClass->$column != null){
-                $this->add(Criteria::_AND, Restrictions::eq($column, $entityClass->$column));
-            }
-        }
-
 		$entityClass->setCriteria($this);
-
+		
 		//interator
 		if(isset($entityConf['relations'])&& is_array($entityConf['relations'])){
 			foreach ($entityConf['relations'] as $k => $relation){
@@ -64,7 +56,7 @@ class CriteriaImpl implements Criteria{
 					if(!isset($cacheTabEntity)){
 						$cacheTabEntity = array();
 					}
-
+					
 					$cacheTabEntity[$entityConf['alias']] = $rEntity;
 					$cache->set('tableEntity',$cacheTabEntity);
 				}
@@ -119,18 +111,15 @@ class CriteriaImpl implements Criteria{
 	public function getOrderEntries(){
 		return $this->orderEntries;
 	}
-    public function setOrders($orders){
-        $this->orderEntries = $orders;
-    }
 
 	public function getGroupEntries(){
 		return $this->groupEntries;
 	}
-
+	
 	public function getDataPager(){
 		return $this->dataPager;
 	}
-
+	
 	public function setDataPager($dataPager){
 		$this->dataPager = $dataPager;
 	}
@@ -147,7 +136,6 @@ class CriteriaImpl implements Criteria{
 			foreach ($this->criterias as $criteria){
 			$this->fullQuery .= $criteria->getQuery();
 		}
-
 	}
 
 	public function buildOrderQuery(){
@@ -227,7 +215,6 @@ class CriteriaImpl implements Criteria{
 
 		$groupQuery = "";
 		$groupEntries = $this->getGroupEntries();
-
 		foreach ($groupEntries as $group){
 			$singleUseingQuery = $group->toSqlString($this);
 			$groupQuery.= ($groupQuery || $this->getAlias() != self::ROOT_ALIAS)?(', '.$singleUseingQuery):$singleUseingQuery;
@@ -272,13 +259,13 @@ class CriteriaImpl implements Criteria{
 
 	/**
 	 * 批量设置过滤条件;
-	 * @param array $example("a"=>1, new Criterion());
+	 * @param array $example("a"=>1, new Criterion()); 
 	 * 数组中可以为 两种数据，如果是普通类型的值 将会转换为  Restrictions::eq($k, $v), 也可以直接传递 Criterion接口类型的值;
 	 */
 	public function setExample($example){
-
+		
 		if(isset($example) && is_array($example)){
-
+			
 			foreach ($example as $k => $v){
 				if($v instanceof \my\bq\criterion\Criterion){
 					$this->add(Criteria::_AND, $v);
@@ -298,16 +285,16 @@ class CriteriaImpl implements Criteria{
 		$this->firstResult = $firstResult;
 		return $this;
 	}
-
+	
 	public function getFetchSize(){
 		return $this->fetchSize;
 	}
-
+	
 	public function getFirstResult(){
 		return $this->firstResult;
-	}
-
-
+	}	
+	
+	
 
 	public function getQuery(){
 		$this->build();
@@ -340,16 +327,11 @@ class CriteriaImpl implements Criteria{
 		return $this;
 	}
 
-	public function createCriteria($entityClass,$join = null){
+	public function createCriteria($entityClass){
 		$criteria = new CriteriaImpl(new $entityClass());
 		$entity_confg = $entityClass->getConfig();
 		$criteria->alias = $entity_confg['alias'];
 		array_push($this->criterias, $criteria);
-
-        if(is_object($join)){
-            $join->setCriteria($criteria);
-            $this->addJoin($join);
-        }
 		return $criteria;
 	}
 
@@ -370,7 +352,7 @@ class CriteriaImpl implements Criteria{
         $this->tableEntity->setFileds($this->fileds);
 		return $this;
 	}
-
+	
 	public function setColumns($columns){
 		$this->columns = $columns;
 		return $this;
@@ -379,8 +361,8 @@ class CriteriaImpl implements Criteria{
 	public function getFileds(){
 		return $this->fileds;
 	}
-
-
+	
+	
 	public function getProjectionEntitys(){
 		return $this->projectionEntries;
 	}
@@ -398,10 +380,10 @@ class CriteriaImpl implements Criteria{
 		$cache = CacheManager::getInstance();
 		$join_table = $cache->get('join_table');
 		if($this->fileds && ($this->getAlias() == self::ROOT_ALIAS ||(is_array($join_table) && in_array($this->alias, $join_table)))){
-
+			
 			if($this->fileds[0] == '*') $this->fileds = $this->columns;
 			foreach ($this->fileds as $filed){
-
+				
 				$selectQuery .= ((($selectQuery || ($isSubQuery && $isAppend)) ?', ':$aheadString).(($projectionQuery && !$isSubQuery)?', ':'').$this->getAlias().'.');
 				if(is_object($filed)){
 					$selectQuery .= ($filed->getPropertyName().' as '.$this->getAlias().'__'.trim($filed->getAlias(),'`'));
@@ -426,22 +408,6 @@ class CriteriaImpl implements Criteria{
 		return new property($property,$this->getAlias());
 	}
 
-
-    /**
-     * 判断指定Crit是否被当前Crit建立Join链接
-     * @param unknown_type $critObj
-     */
-    public function isHasJoin($critObj){
-        if($this->joinEntries){
-            foreach($this->joinEntries as $entrie){
-                if($entrie->getJoinCriteria() === $critObj)
-                    return true;
-                else
-                    return false;
-            }
-        }
-    }
-
 	//clean query;
 	public function cleanFileds(){
 		$this->fileds = array();
@@ -452,8 +418,8 @@ class CriteriaImpl implements Criteria{
 		$this->fullQuery = "";
 		$this->sqlString = "";
 		CriteriaQuery::$parameters = array();
-	}
-
+	}	
+	
 	//clean query;
 	public function cleanProjection(){
 		$this->projectionEntries = array();
@@ -466,12 +432,6 @@ class CriteriaImpl implements Criteria{
 		CriteriaQuery::$parameters = array();
 	}
 
-    public function cleanOrder(){
-        $this->orderEntries = array();
-    }
-
-
-
 	public function cleanQuery(){
 		$this->criterionEntries = array();
 		$this->fullJoinQuery = "";
@@ -480,31 +440,25 @@ class CriteriaImpl implements Criteria{
 		$this->fullQuery = "";
 		$this->sqlString = "";
 	}
-
+	
 	public function cleanLimit(){
 		$this->fetchSize = 0;
 		$this->firstResult = 0;
 	}
 
-
-    public function getTableEntity(){
-        return $this->tableEntity;
-    }
-
-
 	public function fetchRelationData($tableEntity,$config){
-
+		
 		$entityCfg =  $tableEntity->getConfig();
 		$key = $tableEntity->$config['key'];
-
+		
 		$config['class'] = new $config['class']();
-
-		$fileds = $config['class']->getFileds();
+		
+		$fileds = $config['class']->getFileds(); 
 		$relateCfg =  $config['class']->getConfig();
 		if($fileds[0] == '*'){
 			$fileds = $relateCfg['columns'];
 		}
-
+		
 		$crit = null;
 		if(isset($config['criteria']) && is_object($config['criteria'])){
 			$crit = $config['criteria'];
@@ -513,31 +467,28 @@ class CriteriaImpl implements Criteria{
 			$crit->setFileds($fileds);
 		}
 		$crit->add(Criteria::_AND, Restrictions::eq($config['column'], $key));
-
-        $cache = CacheManager::getInstance();
-
-		$totalNum = 0;
+		
+		$cache = CacheManager::getInstance();
+		$sql = $crit->sql();
+		$parmas = $crit->getParameters();		
+		
+		$data = $cache->get(CriteriaQuery::getDumpSQL($sql, $parmas));
+		if($data){
+			return $data;
+		}
+		
+		$totalNum = 0;		
 		$fileds = $crit->getFileds();
-
 		$projectionEntitys = $crit->getProjectionEntitys();
 		$dataPager = $crit->getDataPager(); //获取分页器
-
+		
 		if(isset($projectionEntitys) && count($projectionEntitys) > 0){
 			$crit->cleanFileds();
 			$crit->cleanLimit();
-
-
-            $sql = $crit->sql();
-            $parmas = $crit->getParameters();
-
-            $rs1 = $cache->get(CriteriaQuery::getDumpSQL($sql, $parmas));
-            if(!$rs1){
-                $rs1 = $crit->_array(false);
-                $cache->set(CriteriaQuery::getDumpSQL($sql, $parmas),$rs1);
-            }
-
+			$rs1 = $crit->_array(false);
 			$totalNum = @current(@current($rs1));
-
+			
+			
 			if(is_object($dataPager)){
 				$dataPager->setTotalNum($totalNum);
 			}
@@ -549,30 +500,18 @@ class CriteriaImpl implements Criteria{
 			$crit->setFirstResult($dataPager->getFirstResult());
 			$crit->setFetchSize($dataPager->getPageSize());
 		}
+		
 
-        $sql = $crit->sql();
-        $parmas = $crit->getParameters();
+		
+		$rs = $crit->_array(false);
 
-        $data = $cache->get(CriteriaQuery::getDumpSQL($sql, $parmas));
-        if($data){
-            if($data ===true)
-                return null;
-            return $data;
-        }
-
-        $rs = $crit->_array(false);
-
-        if(!$rs){ //如果为空表示数据库没有数据,但缓存还是需要写;
-            $cache->set(CriteriaQuery::getDumpSQL($sql, $parmas),true);
-        }
-
+		
 		if($rs){
-
+			
 			$class = get_class($config['class']);
 			if($config['relation'] == 'one-to-one'){
 				$rs = current($rs);
 				$data = new $class();
-                $data->setFileds($fileds);
 				foreach($rs as $k => $v){
 					$k = substr($k, strpos($k, "___")+3);
 					$data->$k = $v;
@@ -586,25 +525,25 @@ class CriteriaImpl implements Criteria{
 						}
 					}
 				}
-
+				
 				$data->setCriteria($this);
+				
 				$cache->set(CriteriaQuery::getDumpSQL($sql, $parmas),$data);
-
+				
 				return $data;
-
+									
 			}else{
-
+				
 
 				$dataList = array();
 				foreach ($rs as $i => $item){
 					$data = new $class();
-                    $data->setFileds($fileds);
 					foreach($item as $k => $v){
 						$k = substr($k, strpos($k, "___")+3);
 						$data->$k = $v;
 					}
 					$data->setCriteria($this);
-
+					
 					//检查多级关联
 					$cfgl = $data->getRelationPro();
 					if(isset($cfgl) && is_array($cfgl)){
@@ -614,18 +553,18 @@ class CriteriaImpl implements Criteria{
 							}
 						}
 					}
-					array_push($dataList, $data);
+					array_push($dataList, $data);						
 				}
 
 				return $dataList;
-
+				
 				}
 			}
 		//}
-
+		
 		return null;
 	}
-
+	
 	// to object
 	public function dataToObject($tableEntitys,$data){
 
@@ -641,16 +580,10 @@ class CriteriaImpl implements Criteria{
 					}else{
 						$class = get_class($tableEntitys[$_f[0]]);
 					}
-
-                    if($class == 'my\bq\criterion\CriteriaImpl'){
-                        $class = $class = get_class($this->tableEntity);
-                    }
-
 					if($class){
 						$tableEntity = new $class();
-                        $tableEntity->setFileds($this->getFileds());
 					}
-
+					  
 				}
 				$p = trim($_f[1],'_');
 				if($_f[0] == 'this'){
@@ -659,23 +592,22 @@ class CriteriaImpl implements Criteria{
 					//将未知数据填入实体集合空间
 					$tableEntity->fullSet(array($p=>$v));
 				}
-
+				
 				$tableEntity->setCriteria($this);
 				$n++;
 			}
-
-
+			
+			
 			//get relation data
 			$relationCfg  = $tableEntity->getRelationPro();
-
+			
 			foreach ($relationCfg as $var => $conf){
 				if(!isset($conf['lazy']) || !$conf['lazy'] == true){
 					$tableEntity->$var = $this->fetchRelationData($tableEntity,$conf);
 				}
 			}
-
-            $tableEntity->setIsNewRecord(true);
-
+			
+			
 			return $tableEntity;
 		}
 		return null;
@@ -695,12 +627,9 @@ class CriteriaImpl implements Criteria{
 		if($joinQuery)
 			$sql .= $this->fullJoinQuery;
 
-		if($query){
-            if(substr($query, 0,4) == " and"){
-                $query = substr($query, 4);
-            }
-            $sql.=' where '.$query;
-        }
+		if($query)
+			$sql.=' where '.$query;
+
 		if($groupQuery){
 			if(!$query) $sql.= ' where true ';
 			$sql.= ' group by ' . $groupQuery;
@@ -709,7 +638,6 @@ class CriteriaImpl implements Criteria{
 			if(!$query && !$groupQuery) $sql.= ' where true ';
 			$sql.= ' order by ' . $orderQuery;
 		}
-
 		if($this->fetchSize > 0){
 			$sql.= ' limit ' . $this->firstResult.','.$this->fetchSize;
 		}
@@ -718,7 +646,7 @@ class CriteriaImpl implements Criteria{
 		CriteriaQuery::$parameters = array();
 		$returnParameters = $this->parameters;
 		$this->sqlString=$sql;
-
+		
 		return ($this->sqlString);
 	}
 
@@ -733,71 +661,59 @@ class CriteriaImpl implements Criteria{
 
 
 
+	/**
+	 * set Data Translater
+	 * @param DataTranslater $dataTranslater
+	 *
+	 */
+	public function setDataTranslater($dataTranslater){
+		$dataTranslater->setCriteria($this);
+		$cache = CacheManager::getInstance();
+		$transData = $cache->get('trans_data');
+		if(!$transData)
+			$transData = array();
 
-    /**
-     * add Data Translater
-     * @param Translater $translater
-     */
-    public function addTranslater($translater){
-        $translater->setCriteria($this);
-        array_push($this->translaters, $translater);
-        return $this;
-    }
+		array_push($transData, $dataTranslater);
 
-    /**
-     * 取根CRITERIA相链接的所有Translater
-     */
-    public function getRootAndJoinsTranslater(){
-
-        $transl = $this->translaters;
-
-        if($this->joinEntries){
-            foreach($this->joinEntries as $join){
-                $tObj = $join->getJoinCriteria()->getRootAndJoinsTranslater();
-                array_push($transl, $tObj);
-            }
-        }
-        return $transl;
-    }
-
+		$cache->set('trans_data',$transData);
+		return $this;
+	}
 
 
 	//需要PDO实现 getRows方法;
 	public function _array($toObject = true){
-
+		
 		$pdoManager = PdoManager::getInstance();
 		$pdo = $pdoManager->getPdo($this->tableEntity);
 		$sql = $this->sql();
 		$parmas = $this->getParameters();
-
+		if(Configuration::$SHOW_SQL)Log::writeMsg(Log::NOTICE, CriteriaQuery::getDumpSQL($sql, $parmas));
+		
 		$dataArray = $pdo->getRows($sql,$parmas);
-
+		
 		if($toObject){
 
 			$cache = CacheManager::getInstance();
+			$transData = $cache->get('trans_data');
 			$tableEntitys = $cache->get('tableEntity');
 			if(!$tableEntitys)$tableEntitys = array($this->tableEntity);
-
-
-            $transData = $this->getRootAndJoinsTranslater();
-
-            if(is_array($transData) && $transData[0]){
-                foreach ($dataArray as $k =>$data){
-                    foreach($transData as $dataTranslater){
-                        if($dataTranslater){
-                            $property = $dataTranslater->getProperty();
-
-                            $dataKey = $this->getAlias()."__".$property->getPropertyName();
-                            if(!array_key_exists($dataKey,$data)) continue;
-
-                            $data[$this->getAlias()."__".$property->getAlias()] = $dataTranslater->translate($data[$dataKey]);
-                            $dataArray[$k] = $data;
-                        }
-                    }
-                }
-            }
-
-			if($tableEntitys){
+			
+			if(Relation::$hasRelation || $transData || $tableEntitys){
+				if($transData){
+					foreach ($dataArray as $k =>$data){
+						foreach($transData as $crit => $dataTranslater){
+							$property = $dataTranslater->getProperty();
+							if(!isset($data[$property->getPropertyName()])) break;
+							$value = $data[$property->getPropertyName()];
+							if($value){
+								$data[$property->getAlias()] = $dataTranslater->translate($value);
+								$dataArray[$k] = $data;
+							}
+						}
+					}
+				}
+				
+				if($tableEntitys){
 					foreach ($dataArray as $k =>$data){
 						//if(Relation::$hasRelation) //has relation
 						//to object
@@ -807,7 +723,7 @@ class CriteriaImpl implements Criteria{
 			}
 			Relation::$hasRelation = false;
 			CacheManager::getInstance()->clean();
-
+		}
 		return $dataArray;
 	}
 

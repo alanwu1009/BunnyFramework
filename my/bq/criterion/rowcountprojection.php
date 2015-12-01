@@ -14,5 +14,9 @@ class RowCountProjection implements Criterion{
 
 	}
 
+    public function toMongoParam($criteria){
+
+    }
+
 }
 

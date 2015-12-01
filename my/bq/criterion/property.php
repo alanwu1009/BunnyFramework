@@ -9,8 +9,11 @@ class property{
 	 * @param String $propertyName 
 	 * @param String $alias 参数别名
 	 */
-	public function __construct($propertyName,$alias){
+	public function __construct($propertyName,$alias = null){
 		$this->propertyName = $propertyName;
+        if($alias == null){
+            $alias = $propertyName;
+        }
 		$this->alias = $alias;
 	}
 	

@@ -2,27 +2,36 @@
 namespace my\bq\criterion;
 class LogicalExpression implements Criterion {
 
-	private $lhs;
-	private $rhs;
-	private $ahs;
+	private $criterions;
 	private $op;
 
-	public  function __construct($lhs, $rhs,$ahs=null, $op) {
-		$this->lhs = $lhs;
-		$this->rhs = $rhs;
-		$this->ahs = $ahs;
+	public  function __construct($criterions, $op) {
+		$this->criterions = $criterions;
 		$this->op = $op;
 	}
 	
-	public function toSqlString($criteria){
-		$ls = $this->lhs->toSqlString($criteria);
-		$rs = $this->rhs->toSqlString($criteria);
-		$as = "";
-		if($this->ahs)
-		$as = $this->ahs->toSqlString($criteria);
+	public function toSqlString($criteria,$placeholder = true){
+        $sqlString = "";
 
-		return '(' .$ls.' ' .$this->getOp() .' ' .$rs.' ' .$as.')';
+        if($this->criterions && is_array($this->criterions)){
+            foreach($this->criterions as $criterion){
+                if($sqlString == "")$sqlString.="(";
+                if($sqlString != "(")$sqlString.=" or ";
+
+                $sqlString .= $criterion->toSqlString($criteria);
+            }
+            if($sqlString!=""){
+                $sqlString.=")";
+            }
+        }
+
+        return $sqlString;
 	}
+
+
+    public function toMongoParam($criteria){
+    }
+
 
 	public function getOp() {
 		return $this->op;

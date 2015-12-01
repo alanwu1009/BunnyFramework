@@ -1,6 +1,6 @@
 <?php
 namespace my\bq\criterion;
-class Order implements Criterion{
+class Order implements Criterion,MongoCriterion{
 
 	private $ascending;
 	private $ignoreCase;
@@ -24,8 +24,25 @@ class Order implements Criterion{
 	}
 
 	public function toSqlString($criteria){
-		return $criteria->getAlias().'.'.$this->propertyName . ' ' . ($this->ascending?"asc":"desc");
+        $fileds = $criteria->getFileds();
+        if($fileds == "*" || $fileds[0] == "*"){
+            $entity = $criteria->getTableEntity();
+            $cfg = $entity->getConfig();
+            $fileds = $cfg['columns'];
+        }
+
+        if($fileds && in_array($this->propertyName,$fileds)){
+            return $criteria->getAlias().'__'.$this->propertyName . ' ' . ($this->ascending?"asc":"desc");
+        }else{
+            return $this->propertyName . ' ' . ($this->ascending?"asc":"desc");
+        }
 	}
+
+    public function toMongoParam($criteria){
+        return array($this->propertyName=>$this->ascending?1:-1);
+    }
+
+
 
 	public static function asc($propertyName) {
 		return new Order($propertyName, true);

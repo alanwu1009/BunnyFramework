@@ -13,7 +13,7 @@ class AppendExpression implements Criterion {
 	
 	
 	
-	public function toSqlString($criteria){
+	public function toSqlString($criteria,$placeholder = true){
 		$rs = "";
 		if(is_array($this->ahs)){
 			foreach ($this->ahs as $r)
@@ -25,6 +25,7 @@ class AppendExpression implements Criterion {
 		
 		return $rs;
 	}
+
 
 	public function getOp() {
 		return $this->op;

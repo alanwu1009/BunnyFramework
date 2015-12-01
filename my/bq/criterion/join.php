@@ -11,8 +11,8 @@ class Join implements Criterion{
 	/**
 	 * 设置Criteria对象关联。
 	 * @param Criteria $criteria 关联的对象
-	 * @param mix $lp 关联对象的值。
-	 * @param mix $rp 当前对象的值。
+	 * @param String $lp 关联对象的值。
+	 * @param String $rp 当前对象的值。
 	 * @param String $T 与左项逻辑关系，join \ left join \ right join;
 	 */
 	
@@ -20,6 +20,10 @@ class Join implements Criterion{
 	public static function add($criteria,$lp,$rp,$T){
 		return new self($criteria, $lp, $rp, $T);
 	}
+
+    public function setCriteria($criteria){
+        $this->criteria = $criteria;
+    }
 	
 	protected function __construct($criteria,$lp,$rp,$T){
 		$this->criteria = $criteria;

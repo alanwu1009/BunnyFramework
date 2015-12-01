@@ -2,13 +2,13 @@
 
 namespace my\bq\criterion;
 
-interface Criterion {
+interface MongoCriterion {
 	
 	/**
 	 * Render the SQL fragment
 	 * @author Alan Wu.
 	 */
-	public function toSqlString($criteria);
+	public function toMongoParam($criteria);
 
 
 } 

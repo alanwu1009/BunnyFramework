@@ -5,10 +5,17 @@ class FiledTranslater extends DataTranslater{
 	private $property;
 	private $transHandle;
 	private $crit;
-	
-	function __construct($property,&$transHandle){
+    private $attribute;
+
+    /**
+     * @param property $property
+     * @param function($value,$crit){}  $transHandle
+     * @param array $attribute; 附加属性;
+     */
+    function __construct($property,&$transHandle,$attribute = null){
 		$this->property = $property;
 		$this->transHandle = $transHandle;
+        $this->attribute = $attribute;
 	}
 	
 	public function setCriteria($criteria){
@@ -24,11 +31,9 @@ class FiledTranslater extends DataTranslater{
 	}
 	
 	
-		
+	// do trans;
 	public function translate($value){
-		
-		return  call_user_func_array($this->transHandle, array($value));
-		
+        return  call_user_func_array($this->transHandle, array($value,$this->getCriteria(),$this->attribute));
 	}
-	
+
 }

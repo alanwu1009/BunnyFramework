@@ -1,7 +1,7 @@
 <?php
 namespace my\bq\criterion;
 
-class PropertyExpression implements Criterion{
+class PropertyExpression implements Criterion,MongoCriterion{
 	
 	private $property;
 	private $otherProperty;
@@ -12,9 +12,16 @@ class PropertyExpression implements Criterion{
 		$this->op = $op;
 	}
 
-	public function toSqlString($criteria){
-		return $this->property->getAlias().'.'.$this->property->getPropertyName().$this->op .$this->otherProperty->getAlias().'.'.$this->otherProperty->getPropertyName();
-	}	
+	public function toSqlString($criteria,$placeholder = true){
+        if($placeholder){
+		    return $this->property->getAlias().'.'.$this->property->getPropertyName().$this->op .$this->otherProperty->getAlias().'.'.$this->otherProperty->getPropertyName();
+        }
+        return $this->property->getPropertyName().$this->op .$this->otherProperty->getPropertyName();
+	}
+
+
+
+    public function toMongoParam($criteria){ }
 	
 	
 }
