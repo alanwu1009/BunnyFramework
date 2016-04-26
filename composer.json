@@ -1,0 +1,21 @@
+{
+  "name": "alanwu1009/bunnyframework",
+  "description": "An ORM framework for php",
+  "keywords": ["php", "orm", "mvcframework"],
+  "homepage": "https://github.com/alanwu1009/BunnyFramework",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Alan Wu",
+      "email": "alanwu1009@gmail.com",
+      "homepage": "http://www.bunnyframework.com/"
+    }
+  ],
+  "require": {
+    "php": ">=5.3.0"
+  },
+  "autoload": {
+    "psr-0": { "BunnyFramework": "lib/" }
+  }
+}

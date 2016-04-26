@@ -43,21 +43,23 @@ class Validator{
         $validateRule->checkIdentityCard($value);
     }
 
-    public static function checkError($entity,$attr){
+    public static function checkError($entity,$attr,$message = null){
 
         if(!empty($entity)){
             $exception = $entity->getError($attr);
             if(!empty($exception)){
-                if(is_object($exception)){
-                    $message = $exception->getMessage();
-                    $field = trim(substr($message,0,strpos($message," ")),'\'\"');
-                }else{
-                    $message = $exception;
-                }
-                $config = $entity->getConfig();
-                $fieldsDescription = $config['fields_description'];
-                if($des = $fieldsDescription[$field]){
-                    $message = str_replace($field,$des,$message);
+                if(empty($message)){
+                    if(is_object($exception)){
+                        $message = $exception->getMessage();
+                        $field = trim(substr($message,0,strpos($message," ")),'\'\"');
+                    }else{
+                        $message = $exception;
+                    }
+                    $config = $entity->getConfig();
+                    $fieldsDescription = $config['fields_description'];
+                    if($des = $fieldsDescription[$field]){
+                        $message = str_replace($field,$des,$message);
+                    }
                 }
 
                 echo "<div class='errorMessage'> <span class='glyphicon glyphicon-exclamation-sign' aria-hidden='true'></span> ".$message."</div>";

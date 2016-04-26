@@ -14,7 +14,7 @@ abstract class Log{
             }catch (\Exception $e){}
         }
         if(Configuration::$DEBUG){
-            echo "\r\n".'<span style="display:none">'.$level.': '.date('Y-m-d H:m:s',time()).' '.$msg.'</span>';
+            echo "\r\n".'<span>'.$level.': '.date('Y-m-d H:m:s',time()).' '.$msg.'</span>';
         }
 
 	}

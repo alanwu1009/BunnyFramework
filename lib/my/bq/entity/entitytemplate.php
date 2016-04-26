@@ -10,6 +10,7 @@ use my\bq\criterion\MongoCriteriaImpl;
 use my\bq\webframework\form\ValidateException;
 use my\bq\webframework\form\Validator;
 
+use my\bq\dao\DaoTemplate;
 /**
  * 该类提供一个抽象方法，用于获取实体对应的基本配置及特殊的魔术方法,用于实现关联表的延迟加载.
  */
@@ -30,7 +31,7 @@ abstract class EntityTemplate
     #++++++++++++++++++++
     private $exceptions = array();
 
-    private $isNewRecord = false;
+    private $isNewRecord = true;
 
     public function setIsNewRecord($boolean){
         $this->isNewRecord = $boolean;
@@ -84,7 +85,11 @@ abstract class EntityTemplate
             return $rs;
         } else {
             if (isset($this->set[$var])) {
-                return $this->set[$var];
+                if(ctype_digit($this->set[$var])){
+                    return intval($this->set[$var]);
+                }else{
+                    return $this->set[$var];
+                }
             }
             return;
         }
@@ -128,7 +133,7 @@ abstract class EntityTemplate
                 }
             }
 
-            if($data[$column]!=='')
+            if(isset($data[$column]))
                 $this->$column = $data[$column];
         }
 
@@ -146,11 +151,15 @@ abstract class EntityTemplate
     protected function loadPropertyValues($values)
     {
         self::__construct(); //执行当前够造函数;
-        if (!$values) {
+        if (empty($values)) {
             return;
         }
         foreach ($values as $k => $value) {
-            $this->$k = $value;
+            if(ctype_digit($value)){
+                $this->$k = intval($value);
+            }else{
+                $this->$k = $value;
+            }
         }
     }
 
@@ -172,6 +181,10 @@ abstract class EntityTemplate
                     }
                 }
             }
+        }
+
+        if(ctype_digit($value)){
+            return intval($value);
         }
 
         return $value;
@@ -421,7 +434,11 @@ abstract class EntityTemplate
                 $rule = $ruleItem['rule'];
                 $cOn =  $ruleItem['on'];
 
-                if(empty($cOn) || $on == $cOn){
+                if(!is_array($cOn)){
+                    $cOn = [$cOn];
+                }
+
+                if(empty($cOn) || in_array($on,$cOn)){
 
                     if(!empty($columns)){
 
@@ -490,8 +507,14 @@ abstract class EntityTemplate
                                 }
                                 break;
                             default :
-                                if(method_exists($this,$rule)){
-                                    $this->$rule();
+                                $paramParts = explode(":",$rule);
+                                $method = $paramParts[0];
+                                if(method_exists($this,$method)){
+                                    if(!empty($paramParts[1])){
+                                        $this->$method($paramParts[1]);
+                                    }else{
+                                        $this->$method();
+                                    }
                                 }
                                 break;
                         }
@@ -526,6 +549,15 @@ abstract class EntityTemplate
                 }else{
                     $message = $error;
                 }
+
+                $config = $this->getConfig();
+                $fieldsDescription = $config['fields_description'];
+                if($des = $fieldsDescription[$attr]){
+                    $message = $des.$message;
+                }
+
+                //fields_description
+                //var_dump($message);
                 $errors[trim($attr)] = $message;
             }
         }
@@ -536,12 +568,28 @@ abstract class EntityTemplate
         return $this->errors[$attr];
     }
 
-    public function checkError($attr){
-        Validator::checkError($this,$attr);
+    public function checkError($attr,$message = null){
+        Validator::checkError($this,$attr,$message);
     }
 
     public function setError($attr,$message){
         $this->errors[$attr] = $message;
+    }
+
+    public function clearErrors(){
+        $this->errors = null;
+        $this->hasError = false;
+    }
+
+
+
+    public function save(){
+        $daoTemplate = new DaoTemplate();
+        return $daoTemplate->save($this);
+    }
+    public function replace(){
+        $daoTemplate = new DaoTemplate();
+        return $daoTemplate->replace($this);
     }
 
 }

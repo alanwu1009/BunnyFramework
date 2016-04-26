@@ -590,6 +590,7 @@ class CriteriaImpl implements Criteria{
 				$data->setCriteria($this);
 				$cache->set(CriteriaQuery::getDumpSQL($sql, $parmas),$data);
 
+                $data->setIsNewRecord(false);
 				return $data;
 
 			}else{
@@ -614,6 +615,7 @@ class CriteriaImpl implements Criteria{
 							}
 						}
 					}
+                    $data->setIsNewRecord(false);
 					array_push($dataList, $data);
 				}
 
@@ -657,7 +659,7 @@ class CriteriaImpl implements Criteria{
 					$tableEntity->$p = $v;
 				}else{
 					//将未知数据填入实体集合空间
-					$tableEntity->fullSet(array($p=>$v));
+					$tableEntity->fullSet(array($k=>$v));
 				}
 
 				$tableEntity->setCriteria($this);
@@ -674,7 +676,7 @@ class CriteriaImpl implements Criteria{
 				}
 			}
 
-            $tableEntity->setIsNewRecord(true);
+            $tableEntity->setIsNewRecord(false);
 
 			return $tableEntity;
 		}

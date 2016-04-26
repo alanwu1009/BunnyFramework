@@ -106,7 +106,7 @@ class DefaultValidateRule implements FormValidate{
             return;
         }else{
             if($this->errorMessage!="") throw new ValidateException(ValidateException::PARAMS_CHECKING_EXCEPTION,$this->errorMessage);
-            throw new ValidateException(ValidateException::PARAMS_CHECKING_EXCEPTION,"无效的身份证号码");
+            throw new ValidateException(ValidateException::PARAMS_CHECKING_EXCEPTION,"无效的证件号码");
         }
     }
 

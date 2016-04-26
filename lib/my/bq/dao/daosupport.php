@@ -22,7 +22,7 @@ class DaoSupport{
 				$vars[$key] =  $entity->$key;
 			}
 
-			if(!empty($vars[$entityCfg['id']]) && $entity->checkIsNewRecord()){
+			if(!empty($vars[$entityCfg['id']]) && !$entity->checkIsNewRecord()){
                 return DaoSupport::updateEntity($entity);
             }
 
